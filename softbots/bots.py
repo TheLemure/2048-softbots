@@ -16,7 +16,7 @@ just click the button again; there's no need to restart the server.
 
 import random
 
-from game_rules import UP, RIGHT, DOWN, LEFT, DIRECTIONS, move, legal_moves, \
+from game_rules import UP, RIGHT, DOWN, LEFT, DIRECTIONS, max_tile, move, legal_moves, \
     empty_cells, place_tile, is_game_over, NEW_TILE_PROBABILITIES
 
 def evaluate(board):
@@ -55,16 +55,134 @@ def bfs(board):
     # TODO: implement Breadth-First Search softbot
     return None
 
+DFS_DEPTH = 5
+WIN_VALUE = 1e9
+
+
+def evaluate(board):
+    """Prefer empty cells, larger tiles, and smooth tile arrangements."""
+    empty = len(empty_cells(board))
+    largest = max_tile(board)
+
+    return empty * 100 + largest * 10
+
+
+def dfs_value(board, depth, counter):
+    counter["nodes"] += 1
+
+    if max_tile(board) >= 2048:
+        return WIN_VALUE + depth
+
+    if depth == 0 or is_game_over(board):
+        return evaluate(board)
+
+    best = float("-inf")
+
+    for direction in legal_moves(board):
+        new_board, _, moved = move(board, direction)
+
+        if not moved:
+            continue
+
+        value = dfs_value(new_board, depth - 1, counter)
+        best = max(best, value)
+
+    return evaluate(board) if best == float("-inf") else best
+
 
 def dfs(board):
-    # TODO: implement Depth-First Search softbot
-    return None
+    best_move = None
+    best_value = float("-inf")
+    counter = {"nodes": 0}
 
+    for direction in legal_moves(board):
+        new_board, _, moved = move(board, direction)
+
+        if not moved:
+            continue
+
+        value = dfs_value(new_board, DFS_DEPTH - 1, counter)
+
+        if value > best_value:
+            best_value = value
+            best_move = direction
+
+    return best_move
+
+#------------------------------------------------------------------------------#
+
+MAX_DEPTH = 12
+NODE_BUDGET = 1000
+
+
+class BudgetExceeded(Exception):
+    pass
+
+
+def dfs_value_budget(board, depth, counter):
+    counter["nodes"] += 1
+
+    if counter["nodes"] > NODE_BUDGET:
+        raise BudgetExceeded
+
+    if max_tile(board) >= 2048:
+        return WIN_VALUE + depth
+
+    if depth == 0 or is_game_over(board):
+        return evaluate(board)
+
+    best = float("-inf")
+
+    for direction in legal_moves(board):
+        new_board, _, moved = move(board, direction)
+
+        if not moved:
+            continue
+
+        value = dfs_value_budget(new_board, depth - 1, counter)
+        best = max(best, value)
+
+    return evaluate(board) if best == float("-inf") else best
 
 def iterative_deepening(board):
-    # TODO: implement Iterative Deepening softbot
-    return None
+    best_move = None
+    counter = {"nodes": 0}
 
+    for depth in range(1, MAX_DEPTH + 1):
+        iteration_move = None
+        iteration_value = float("-inf")
+
+        try:
+            for direction in legal_moves(board):
+                new_board, _, moved = move(board, direction)
+
+                if not moved:
+                    continue
+
+                value = dfs_value_budget(
+                    new_board, depth - 1, counter
+                )
+
+                if value > iteration_value:
+                    iteration_value = value
+                    iteration_move = direction
+
+        except BudgetExceeded:
+            break
+
+        if iteration_move is not None:
+            best_move = iteration_move
+
+        if iteration_value >= WIN_VALUE:
+            break
+
+    if best_move is None:
+        moves = legal_moves(board)
+        return moves[0] if moves else None
+
+    return best_move
+
+#------------------------------------------------------------------------------#
 
 def ucs(board):
     # TODO: implement Uniform Cost Search softbot
@@ -90,11 +208,89 @@ def simulated_annealing(board):
     # TODO: implement Simulated Annealing softbot
     return None
 
+#------------------------------------------------------------------------------#
+
+MINIMAX_DEPTH = 4
+
+
+def minimax_value(board, depth, alpha, beta, maximizing):
+    if max_tile(board) >= 2048:
+        return WIN_VALUE + depth
+
+    if depth == 0 or is_game_over(board):
+        return evaluate(board)
+
+    if maximizing:
+        best = float("-inf")
+
+        for direction in legal_moves(board):
+            new_board, _, moved = move(board, direction)
+
+            if not moved:
+                continue
+
+            value = minimax_value(
+                new_board, depth - 1, alpha, beta, False
+            )
+
+            best = max(best, value)
+            alpha = max(alpha, best)
+
+            if alpha >= beta:
+                break
+
+        return evaluate(board) if best == float("-inf") else best
+
+    # Chance-like opponent: choose the least favorable tile spawn.
+    cells = empty_cells(board)
+
+    if not cells:
+        return evaluate(board)
+
+    worst = float("inf")
+
+    for row, col in cells:
+        for tile, probability in NEW_TILE_PROBABILITIES.items():
+            new_board = place_tile(board, row, col, tile)
+
+            value = minimax_value(
+                new_board, depth - 1, alpha, beta, True
+            )
+
+            worst = min(worst, value)
+            beta = min(beta, worst)
+
+            if alpha >= beta:
+                return worst
+
+    return worst
+
 
 def minimax(board):
-    # TODO: implement MiniMax softbot
-    return None
+    best_move = None
+    best_value = float("-inf")
 
+    for direction in legal_moves(board):
+        new_board, _, moved = move(board, direction)
+
+        if not moved:
+            continue
+
+        value = minimax_value(
+            new_board,
+            MINIMAX_DEPTH - 1,
+            best_value,
+            float("inf"),
+            False
+        )
+
+        if value > best_value:
+            best_value = value
+            best_move = direction
+
+    return best_move
+
+#------------------------------------------------------------------------------#
 
 def expectimax(board):
     # TODO: implement ExpectiMax softbot
