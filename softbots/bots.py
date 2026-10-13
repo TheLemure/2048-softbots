@@ -43,7 +43,7 @@ def random_bot(board):
     moves = legal_moves(board)
 
     # 2. No legal moves means the game is over; returning None stops the bot.
-    if not moves:
+    if is_game_over(board):
         return None
 
     # 3. Choose one of the legal directions at random and return it.
