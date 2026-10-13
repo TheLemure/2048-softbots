@@ -1,0 +1,51 @@
+/* Softbot panel: sits to the right of the game board */
+.game-area {
+  position: relative; }
+
+.softbot-panel {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: 20px;
+  width: 180px; }
+
+.softbot-panel h2 {
+  margin: 0 0 10px;
+  font-size: 18px; }
+
+.softbot-button {
+  display: block;
+  background: #8f7a66;
+  border-radius: 3px;
+  color: #f9f6f2;
+  text-decoration: none;
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+  height: 34px;
+  line-height: 34px;
+  margin-bottom: 6px;
+  cursor: pointer; }
+
+.softbot-button:hover {
+  background: #9f8b77; }
+
+.softbot-button.active {
+  background: #f67c5f; }
+
+.softbot-status {
+  min-height: 20px;
+  font-size: 14px;
+  margin-top: 8px; }
+
+/* Not enough room beside the board: show the panel below it instead */
+@media screen and (max-width: 960px) {
+  .softbot-panel {
+    position: static;
+    margin: 20px 0 0;
+    width: auto; }
+
+  .softbot-button {
+    display: inline-block;
+    padding: 0 12px;
+    margin-right: 4px; } }
