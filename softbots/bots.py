@@ -58,15 +58,6 @@ def bfs(board):
 DFS_DEPTH = 5
 WIN_VALUE = 1e9
 
-
-def evaluate(board):
-    """Prefer empty cells, larger tiles, and smooth tile arrangements."""
-    empty = len(empty_cells(board))
-    largest = max_tile(board)
-
-    return empty * 100 + largest * 10
-
-
 def dfs_value(board, depth, counter):
     counter["nodes"] += 1
 
@@ -78,7 +69,7 @@ def dfs_value(board, depth, counter):
 
     best = float("-inf")
 
-    for direction in legal_moves(board):
+    for direction in DIRECTIONS:
         new_board, _, moved = move(board, direction)
 
         if not moved:
@@ -133,7 +124,7 @@ def dfs_value_budget(board, depth, counter):
 
     best = float("-inf")
 
-    for direction in legal_moves(board):
+    for direction in DIRECTIONS:
         new_board, _, moved = move(board, direction)
 
         if not moved:
@@ -153,7 +144,7 @@ def iterative_deepening(board):
         iteration_value = float("-inf")
 
         try:
-            for direction in legal_moves(board):
+            for direction in DIRECTIONS:
                 new_board, _, moved = move(board, direction)
 
                 if not moved:
