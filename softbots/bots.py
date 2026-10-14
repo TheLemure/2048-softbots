@@ -13,41 +13,39 @@ Returning None (or anything that isn't 0-3) stops the softbot in the browser.
 The server reloads this file on every move, so after saving your changes
 just click the button again; there's no need to restart the server.
 """
-
+import math
 import random
+from collections import deque
 
-from game_rules import UP, RIGHT, DOWN, LEFT, DIRECTIONS, move, legal_moves, \
-    empty_cells, place_tile, is_game_over, NEW_TILE_PROBABILITIES
+from game_rules import UP, RIGHT, DOWN, LEFT, DIRECTIONS, move,  max_tile, legal_moves, \
+    empty_cells, place_tile, is_game_over, get_score, NEW_TILE_PROBABILITIES
 
 def evaluate(board):
     """
-    Evaluate the board and return a score. This is a simple heuristic that
-    prefers boards with more empty cells and higher tiles.
-    
+    Evaluate the board and return a score.
+
+    What is currently implemented in the evaluation:    
+    - The number of empty cells (more is better) * 100
+    - The maximum tile (higher is better) * 10
+    - The score shown in the browser (higher is better)
     """
-    empty = len(empty_cells(board))
-    max_tile = max(max(row) for row in board)
-    return( empty * 100 + max_tile * 10)
+    
+    num_empty_cells = len(empty_cells(board))
+    return( num_empty_cells*100  +  max_tile*10  +  get_score())
+
 
 def random_bot(board):
     """
-    Pick a random direction out of the moves that actually do something.
-
-    This is the simplest possible softbot: it doesn't look ahead or score
-    boards at all. Every other softbot follows the same pattern (look at
-    the board, decide on a direction, return it); they just put more
-    thought into the "decide" step.
+    Just choose a random move out of the legal ones. 
+    
+    This is the simplest softbot, used as a baseline for comparison.
     """
-    # 1. Find the directions that would change the board. Moving into a
-    #    wall does nothing in 2048, so picking one would waste a turn.
     moves = legal_moves(board)
 
-    # 2. No legal moves means the game is over; returning None stops the bot.
     if is_game_over(board):
         return None
 
-    # 3. Choose one of the legal directions at random and return it.
-    #    The browser makes this move and then asks again for the next one.
+
     return random.choice(moves)
 
 

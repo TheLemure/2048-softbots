@@ -21,6 +21,10 @@ DIRECTION_NAMES = {UP: "up", RIGHT: "right", DOWN: "down", LEFT: "left"}
 # a 2 with 90% probability, a 4 with 10% probability.
 NEW_TILE_PROBABILITIES = {2: 0.9, 4: 0.1}
 
+# The real game's score, as shown in the browser. The server updates it
+# before every call to a softbot.
+_current_score = 0
+
 
 def copy_board(board):
     return [row[:] for row in board]
@@ -112,3 +116,14 @@ def is_game_over(board):
 
 def max_tile(board):
     return max(max(row) for row in board)
+
+
+def set_score(score):
+    """Called by the server with the browser's score before each move."""
+    global _current_score
+    _current_score = score
+
+
+def get_score():
+    """The actual game score shown in the browser right now."""
+    return _current_score

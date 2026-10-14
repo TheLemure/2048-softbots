@@ -45,11 +45,11 @@ Softbots.getBoard = function (game) {
 };
 
 // Ask the Python server for a move. Resolves to the server's JSON reply.
-Softbots.requestMove = function (botId, board) {
+Softbots.requestMove = function (botId, board, score) {
   return fetch("/move", {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ bot: botId, board: board })
+    body:    JSON.stringify({ bot: botId, board: board, score: score })
   }).then(function (response) {
     return response.json();
   });
@@ -150,7 +150,7 @@ SoftbotRunner.prototype.step = function () {
     return;
   }
 
-  Softbots.requestMove(bot.id, Softbots.getBoard(game)).then(function (reply) {
+  Softbots.requestMove(bot.id, Softbots.getBoard(game), game.score).then(function (reply) {
     // The bot was stopped or replaced while Python was thinking
     if (runId !== self.runId) return;
 

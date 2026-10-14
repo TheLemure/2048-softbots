@@ -9,7 +9,8 @@ then open http://localhost:8000 in your browser.
 
 It does two things:
   1. Serves the 2048 game files (index.html, js/, style/, ...).
-  2. Answers POST /move: the browser sends {"bot": "<id>", "board": [[...]]}
+  2. Answers POST /move: the browser sends
+     {"bot": "<id>", "board": [[...]], "score": <current game score>}
      and gets back {"move": 0-3 or null} from the matching function in bots.py.
 """
 
@@ -41,6 +42,7 @@ class SoftbotHandler(SimpleHTTPRequestHandler):
             request = json.loads(self.rfile.read(length))
             bot_id = request["bot"]
             board = request["board"]
+            score = request.get("score", 0)
         except (ValueError, KeyError) as error:
             self.send_json(400, {"error": "Bad request: %s" % error})
             return
@@ -49,6 +51,9 @@ class SoftbotHandler(SimpleHTTPRequestHandler):
             # Pick up edits to the bot code without restarting the server
             importlib.reload(game_rules)
             importlib.reload(bots)
+
+            # Make the real game score available to bots via get_score()
+            game_rules.set_score(score)
 
             bot = bots.BOTS.get(bot_id)
             if bot is None:
