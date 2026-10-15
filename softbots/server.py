@@ -11,6 +11,10 @@ It does two things:
   1. Serves the 2048 game files (index.html, js/, style/, ...).
   2. Answers POST /move: the browser sends {"bot": "<id>", "board": [[...]]}
      and gets back {"move": 0-3 or null} from the matching function in bots.py.
+  3. Runs the stats table's benchmarks (see stats.py):
+       GET  /stats         -> results so far, and progress of any run
+       POST /stats/run     -> {"bots": ["<id>", ...]} queues those bots (100 games each)
+       POST /stats/cancel  -> stops the run in progress and clears the queue
 """
 
 import importlib
@@ -22,6 +26,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 import game_rules
 import bots
+import stats
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_PORT = 8000
@@ -31,7 +36,17 @@ class SoftbotHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=REPO_ROOT, **kwargs)
 
+    def do_GET(self):
+        if self.path.split("?")[0] == "/stats":
+            self.send_json(200, stats.snapshot())
+        else:
+            super().do_GET()
+
     def do_POST(self):
+        if self.path in ("/stats/run", "/stats/cancel"):
+            self.handle_stats()
+            return
+
         if self.path != "/move":
             self.send_json(404, {"error": "Unknown endpoint " + self.path})
             return
@@ -62,6 +77,20 @@ class SoftbotHandler(SimpleHTTPRequestHandler):
             return
 
         self.send_json(200, {"move": direction})
+
+    def handle_stats(self):
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            request = json.loads(self.rfile.read(length) or b"{}")
+        except ValueError as error:
+            self.send_json(400, {"error": "Bad request: %s" % error})
+            return
+
+        if self.path == "/stats/run":
+            stats.start(request.get("bots", []))
+        else:
+            stats.cancel()
+        self.send_json(200, stats.snapshot())
 
     def send_json(self, status, data):
         body = json.dumps(data).encode("utf-8")
