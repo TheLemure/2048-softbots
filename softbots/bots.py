@@ -175,7 +175,7 @@ def simulated_annealing(board):
     T starts at 100 and drops by 1 every time the bot is used (minimum 1).
     """
     # --- settings (edit these) ---
-    start_temp = 1000
+    start_temp = 5000
     min_temp = 1                         # keeps T from reaching 0 (divide by zero)
     temp_file = "sa_temperature.txt"     # where T is remembered between moves
 
@@ -224,10 +224,10 @@ def simulated_annealing(board):
     # --- annealing decision ---
     delta_e = best_value - current_value
 
-    if delta_e >= 0:
-        chosen = best_move                                  # hill climbing
-    elif random.random() < math.exp(delta_e / T):
-        chosen = random.choice(moves)                       # it "hit": random move
+    if random.random() < math.exp(delta_e / T):
+        chosen = random.choice(moves)                                 # random move
+    elif delta_e >= 0:
+        chosen = best_move                                # hill climbing                    # it "hit": random move
     else:
         # Missed. Keep playing the best move unless it's a bad outcome:
         # no score improvement AND another cell gets used up.
@@ -235,6 +235,7 @@ def simulated_annealing(board):
             chosen = None                                   # stop
         else:
             chosen = best_move
+            print("H")
 
     # --- cool down and save T for the next call ---
     with open(temp_file, "w") as f:
