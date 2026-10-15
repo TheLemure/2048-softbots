@@ -20,26 +20,34 @@ from collections import deque
 from game_rules import UP, RIGHT, DOWN, LEFT, DIRECTIONS, move,  max_tile, legal_moves, \
     empty_cells, place_tile, is_game_over, get_score, NEW_TILE_PROBABILITIES
 
-def evaluate(board):
+def evaluate(board, points=0):
     """
     Evaluate the board and return a score (higher is better).
 
-    Tiles are measured by their exponent (2 -> 1, 4 -> 2, 8 -> 3, ...), so a
-    2048 doesn't drown out everything else. What the evaluation rewards:
+    points is how many points the moves leading to this board earned
+    (add up the second value returned by move() along the search path).
+
+    Tiles are measured by their exponent (2 -> 1, 4 -> 2, 8 -> 3, ...) so
+    big tiles don't drown out everything else. What is rewarded:
     - Empty cells: more room to move and less chance of getting stuck
+    - Points earned by the moves that led here
+    - The biggest tile
     - Monotonicity: each row and column sorted in one direction, like
       64, 32, 16, 8, so tiles line up to merge into each other
     - Smoothness: neighbouring tiles close in value, so they can merge soon
-    - Biggest tile in a corner, where it's out of the way
-    - Losing gets a huge penalty so the search avoids it at all costs
+    - The biggest tile sitting in a corner
+    Losing gets a huge penalty so the search avoids it at all costs.
     """
     EMPTY_WEIGHT = 2.7
+    POINTS_WEIGHT = 1.0
+    MAX_TILE_WEIGHT = 1.0
     MONOTONICITY_WEIGHT = 1.0
     SMOOTHNESS_WEIGHT = 0.1
     CORNER_WEIGHT = 1.0
     GAME_OVER_SCORE = -1_000_000
 
     num_empty_cells = len(empty_cells(board))
+    # is_game_over is slow, and the game can't be over with an empty cell
     if num_empty_cells == 0 and is_game_over(board):
         return GAME_OVER_SCORE
 
@@ -61,11 +69,13 @@ def evaluate(board):
         # Only penalise the line for going against its main direction
         monotonicity -= min(increasing, decreasing)
 
-    biggest = max(max(row) for row in exponents)
+    biggest = int(math.log2(max_tile(board)))
     corners = [exponents[0][0], exponents[0][-1], exponents[-1][0], exponents[-1][-1]]
     corner = biggest if biggest in corners else 0
 
     return (num_empty_cells * EMPTY_WEIGHT
+            + math.log2(points + 1) * POINTS_WEIGHT
+            + biggest * MAX_TILE_WEIGHT
             + monotonicity * MONOTONICITY_WEIGHT
             + smoothness * SMOOTHNESS_WEIGHT
             + corner * CORNER_WEIGHT)
@@ -87,42 +97,8 @@ def random_bot(board):
 
 
 def bfs(board):
-    """
-    Breadth-First Search: look at every sequence of moves up to MAX_DEPTH,
-    level by level, and pick the first move of the sequence that leads to
-    the best-scoring board.
-
-    For simplicity this ignores the random tile added after each move.
-    """
-    MAX_DEPTH = 3
-
-    if is_game_over(board):
-        return None
-
-    # Each queue entry is (board, the first move that led here, depth)
-    queue = deque()
-    for direction in legal_moves(board):
-        new_board = move(board, direction)[0]
-        queue.append((new_board, direction, 1))
-
-    best_move = None
-    best_score = -math.inf
-
-    while queue:
-        current, first_move, depth = queue.popleft()
-
-        score = evaluate(current)
-        if score > best_score:
-            best_score = score
-            best_move = first_move
-
-        # Expand this board's children unless we've reached the depth limit
-        if depth < MAX_DEPTH:
-            for direction in legal_moves(current):
-                new_board = move(current, direction)[0]
-                queue.append((new_board, first_move, depth + 1))
-
-    return best_move
+    # TODO: implement Breadth-First Search softbot
+    return None
 
 
 def dfs(board):
@@ -151,130 +127,59 @@ def a_star(board):
 
 
 def hill_climbing(board):
-    """
-    Hill Climbing: look one move ahead and take the move that leads to
-    the best-scoring board.
-    """
-    if is_game_over(board):
-        return None
-
-    best_move = None
-    best_score = -math.inf
-
-    for direction in legal_moves(board):
-        new_board = move(board, direction)[0]
-        score = evaluate(new_board)
-        if score > best_score:
-            best_score = score
-            best_move = direction
-
-    return best_move
+    # TODO: implement Hill Climbing softbot
+    return None
 
 
 def simulated_annealing(board):
-    """
-    Simulated Annealing: like Hill Climbing, but sometimes takes a worse
-    move on purpose. Try the legal moves in random order and take each one
-    with probability e^(change / temperature), where change is how much
-    worse it is than the best move (so the best move is always accepted).
-
-    The server reloads this file every move, so the temperature can't be
-    stored between moves. Instead it cools down as the game score grows,
-    making worse moves less and less likely.
-    """
-    START_TEMPERATURE = 5
-
-    if is_game_over(board):
-        return None
-
-    temperature = START_TEMPERATURE / (1 + get_score() / 100)
-
-    moves = legal_moves(board)
-    random.shuffle(moves)
-
-    scores = {direction: evaluate(move(board, direction)[0]) for direction in moves}
-    best_score = max(scores.values())
-
-    for direction in moves:
-        change = scores[direction] - best_score  # 0 for the best move, negative otherwise
-        if random.random() < math.exp(change / temperature):
-            return direction
+    # TODO: implement Simulated Annealing softbot
+    return None
 
 
 def minimax(board):
-    """
-    MiniMax: we pick the move (max), then assume the new tile lands in the
-    worst possible cell with the worst possible value (min). Searches
-    MAX_DEPTH of our moves ahead and scores the boards at the end.
-    """
-    MAX_DEPTH = 2
-
-    if is_game_over(board):
-        return None
-
-    def max_value(current, depth):
-        # Our turn: take the best move
-        if depth == 0 or is_game_over(current):
-            return evaluate(current)
-        return max(min_value(move(current, direction)[0], depth)
-                   for direction in legal_moves(current))
-
-    def min_value(current, depth):
-        # The game's turn: place the new tile wherever hurts us most
-        cells = empty_cells(current)
-        if not cells:
-            return max_value(current, depth - 1)
-        return min(max_value(place_tile(current, row, col, value), depth - 1)
-                   for row, col in cells
-                   for value in NEW_TILE_PROBABILITIES)
-
-    best_move = None
-    best_score = -math.inf
-
-    for direction in legal_moves(board):
-        score = min_value(move(board, direction)[0], MAX_DEPTH)
-        if score > best_score:
-            best_score = score
-            best_move = direction
-
-    return best_move
+    # TODO: implement MiniMax softbot
+    return None
 
 
 def expectimax(board):
     """
-    ExpectiMax: like MiniMax, but instead of assuming the worst tile
-    placement, average over every possible placement, weighted by how
-    likely it is (any empty cell equally, a 2 at 90% or a 4 at 10%).
+    ExpectiMax: on our turn we take the best move (max), and on the game's
+    turn we average over every way the random tile could appear (chance):
+    any empty cell equally likely, a 2 at 90% or a 4 at 10%.
+
+    Looks MAX_DEPTH of our moves ahead, adds up the points those moves
+    earn, and scores the boards at the end with evaluate().
     """
     MAX_DEPTH = 2
 
-    if is_game_over(board):
-        return None
-
-    def max_value(current, depth):
-        # Our turn: take the best move
+    def max_value(current, points, depth):
+        # Our turn: the board is worth as much as our best move
         if depth == 0 or is_game_over(current):
-            return evaluate(current)
-        return max(chance_value(move(current, direction)[0], depth)
-                   for direction in legal_moves(current))
+            return evaluate(current, points)
+        best = -math.inf
+        for direction in legal_moves(current):
+            new_board, gained, _ = move(current, direction)
+            best = max(best, chance_value(new_board, points + gained, depth))
+        return best
 
-    def chance_value(current, depth):
-        # The game's turn: average over where the new tile could appear
+    def chance_value(current, points, depth):
+        # The game's turn: average over every tile it could add
+
+        # Get the rows and columns of the empty cells, so we can place a new tile in each one
         cells = empty_cells(current)
-        if not cells:
-            return max_value(current, depth - 1)
-        total = 0
+        # If there are no empty cells, the game is over and we return the score of this board
+        average = 0
         for row, col in cells:
             for value, probability in NEW_TILE_PROBABILITIES.items():
                 new_board = place_tile(current, row, col, value)
-                total += probability * max_value(new_board, depth - 1)
-        return total / len(cells)
+                average += probability * max_value(new_board, points, depth - 1) / len(cells)
+        return average
 
     best_move = None
     best_score = -math.inf
-
     for direction in legal_moves(board):
-        score = chance_value(move(board, direction)[0], MAX_DEPTH)
+        new_board, gained, _ = move(board, direction)
+        score = chance_value(new_board, gained, MAX_DEPTH)
         if score > best_score:
             best_score = score
             best_move = direction
