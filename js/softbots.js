@@ -20,7 +20,7 @@ Softbots.list = [
   { name: "Greedy",              id: "greedy" },
   { name: "Simulated Annealing", id: "simulated_annealing" },
   { name: "MiniMax",             id: "minimax" },
-  { name: "ExpectiMax",          id: "expectimax" }
+  { name: "Expectimax",          id: "expectimax" }
 ];
 
 // Returns the board as a list of rows, board[row][col] (0 = empty),

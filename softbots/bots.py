@@ -14,8 +14,9 @@ The server reloads this file on every move, so after saving your changes
 just click the button again; there's no need to restart the server.
 """
 
-import random
 import math
+import random
+from collections import deque
 
 from game_rules import UP, RIGHT, DOWN, LEFT, DIRECTIONS, max_tile, move, legal_moves, \
     empty_cells, place_tile, is_game_over, NEW_TILE_PROBABILITIES
@@ -341,8 +342,49 @@ def minimax(board):
 #------------------------------------------------------------------------------#
 
 def expectimax(board):
-    # TODO: implement ExpectiMax softbot
-    return None
+    """
+    ExpectiMax: on our turn we take the best move (max), and on the game's
+    turn we average over every way the random tile could appear (chance):
+    any empty cell equally likely, a 2 at 90% or a 4 at 10%.
+
+    Looks MAX_DEPTH of our moves ahead, adds up the points those moves
+    earn, and scores the boards at the end with evaluate().
+    """
+    MAX_DEPTH = 2
+
+    def max_value(current, points, depth):
+        # Our turn: the board is worth as much as our best move
+        if depth == 0 or is_game_over(current):
+            return evaluate(current, points)
+        best = -math.inf
+        for direction in legal_moves(current):
+            new_board, gained, _ = move(current, direction)
+            best = max(best, chance_value(new_board, points + gained, depth))
+        return best
+
+    def chance_value(current, points, depth):
+        # The game's turn: average over every tile it could add
+
+        # Get the rows and columns of the empty cells, so we can place a new tile in each one
+        cells = empty_cells(current)
+        # If there are no empty cells, the game is over and we return the score of this board
+        average = 0
+        for row, col in cells:
+            for value, probability in NEW_TILE_PROBABILITIES.items():
+                new_board = place_tile(current, row, col, value)
+                average += probability * max_value(new_board, points, depth - 1) / len(cells)
+        return average
+
+    best_move = None
+    best_score = -math.inf
+    for direction in legal_moves(board):
+        new_board, gained, _ = move(board, direction)
+        score = chance_value(new_board, gained, MAX_DEPTH)
+        if score > best_score:
+            best_score = score
+            best_move = direction
+
+    return best_move
 
 
 # Maps the id the browser sends to the function that handles it.
