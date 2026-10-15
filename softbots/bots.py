@@ -50,139 +50,39 @@ def random_bot(board):
     #    The browser makes this move and then asks again for the next one.
     return random.choice(moves)
 
+WIN_VALUE = 1e9
+
 
 def bfs(board):
     # TODO: implement Breadth-First Search softbot
     return None
 
-DFS_DEPTH = 5
-WIN_VALUE = 1e9
-
-def dfs_value(board, depth, counter):
-    counter["nodes"] += 1
-
-    if max_tile(board) >= 2048:
-        return WIN_VALUE + depth
-
-    if depth == 0 or is_game_over(board):
-        return evaluate(board)
-
-    best = float("-inf")
-
-    for direction in DIRECTIONS:
-        new_board, _, moved = move(board, direction)
-
-        if not moved:
-            continue
-
-        value = dfs_value(new_board, depth - 1, counter)
-        best = max(best, value)
-
-    return evaluate(board) if best == float("-inf") else best
 
 
-def dfs(board):
+def greedy(board):
+    """Choose the legal move with the best immediate board evaluation."""
+    moves = legal_moves(board)
+
+    if not moves:
+        return None
+
     best_move = None
-    best_value = float("-inf")
-    counter = {"nodes": 0}
+    best_score = float("-inf")
 
-    for direction in legal_moves(board):
+    for direction in moves:
         new_board, _, moved = move(board, direction)
 
         if not moved:
             continue
 
-        value = dfs_value(new_board, DFS_DEPTH - 1, counter)
+        score = evaluate(new_board)
 
-        if value > best_value:
-            best_value = value
+        if score > best_score:
+            best_score = score
             best_move = direction
 
     return best_move
 
-#------------------------------------------------------------------------------#
-
-MAX_DEPTH = 12
-NODE_BUDGET = 1000
-
-
-class BudgetExceeded(Exception):
-    pass
-
-
-def dfs_value_budget(board, depth, counter):
-    counter["nodes"] += 1
-
-    if counter["nodes"] > NODE_BUDGET:
-        raise BudgetExceeded
-
-    if max_tile(board) >= 2048:
-        return WIN_VALUE + depth
-
-    if depth == 0 or is_game_over(board):
-        return evaluate(board)
-
-    best = float("-inf")
-
-    for direction in DIRECTIONS:
-        new_board, _, moved = move(board, direction)
-
-        if not moved:
-            continue
-
-        value = dfs_value_budget(new_board, depth - 1, counter)
-        best = max(best, value)
-
-    return evaluate(board) if best == float("-inf") else best
-
-def iterative_deepening(board):
-    best_move = None
-    counter = {"nodes": 0}
-
-    for depth in range(1, MAX_DEPTH + 1):
-        iteration_move = None
-        iteration_value = float("-inf")
-
-        try:
-            for direction in DIRECTIONS:
-                new_board, _, moved = move(board, direction)
-
-                if not moved:
-                    continue
-
-                value = dfs_value_budget(
-                    new_board, depth - 1, counter
-                )
-
-                if value > iteration_value:
-                    iteration_value = value
-                    iteration_move = direction
-
-        except BudgetExceeded:
-            break
-
-        if iteration_move is not None:
-            best_move = iteration_move
-
-        if iteration_value >= WIN_VALUE:
-            break
-
-    if best_move is None:
-        moves = legal_moves(board)
-        return moves[0] if moves else None
-
-    return best_move
-
-#------------------------------------------------------------------------------#
-
-def ucs(board):
-    # TODO: implement Uniform Cost Search softbot
-    return None
-
-
-def greedy(board):
-    # TODO: implement Greedy (best-first) softbot
-    return None
 
 
 def a_star(board):
@@ -293,9 +193,6 @@ def expectimax(board):
 BOTS = {
     "random":              random_bot,
     "bfs":                 bfs,
-    "dfs":                 dfs,
-    "iterative_deepening": iterative_deepening,
-    "ucs":                 ucs,
     "greedy":              greedy,
     "a_star":              a_star,
     "hill_climbing":       hill_climbing,
