@@ -33,10 +33,99 @@
 .softbot-button.active {
   background: #f67c5f; }
 
+/* Speed slider */
+.softbot-speed {
+  display: block;
+  font-size: 14px;
+  margin-top: 8px; }
+
+.softbot-speed input {
+  display: block;
+  width: 100%;
+  margin-top: 4px; }
+
+/* The speed slider sets --animation-scale (in js/softbots.js): every tile
+   animation from main.css takes that many times as long (0.5 = twice as fast) */
+:root {
+  --animation-scale: 1; }
+
+.tile {
+  transition-duration: calc(100ms * var(--animation-scale)); }
+
+.tile-new .tile-inner,
+.tile-merged .tile-inner {
+  animation-duration: calc(200ms * var(--animation-scale));
+  animation-delay: calc(100ms * var(--animation-scale)); }
+
+.score-container .score-addition, .best-container .score-addition {
+  animation-duration: calc(600ms * var(--animation-scale)); }
+
 .softbot-status {
   min-height: 20px;
   font-size: 14px;
   margin-top: 8px; }
+
+/* Statistics: below the game */
+.stats-panel {
+  margin-top: 30px; }
+
+.stats-panel h2 {
+  margin: 0 0 10px;
+  font-size: 18px; }
+
+.stats-controls {
+  font-size: 14px; }
+
+.stats-games {
+  width: 60px;
+  font-family: inherit;
+  font-size: 14px;
+  margin-right: 8px; }
+
+.stats-button {
+  display: inline-block;
+  background: #8f7a66;
+  border-radius: 3px;
+  color: #f9f6f2;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 14px;
+  height: 34px;
+  line-height: 34px;
+  padding: 0 12px;
+  cursor: pointer; }
+
+.stats-button:hover {
+  background: #9f8b77; }
+
+.stats-status {
+  min-height: 20px;
+  font-size: 14px;
+  margin: 8px 0; }
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-bottom: 16px; }
+
+.stats-table th,
+.stats-table td {
+  padding: 6px;
+  text-align: right;
+  border-bottom: 1px solid #eee4da; }
+
+.stats-table th {
+  background: #bbada0;
+  color: #f9f6f2;
+  text-align: center; }
+
+.stats-table td:first-child {
+  text-align: left; }
+
+.stats-note {
+  font-size: 13px;
+  line-height: 1.4; }
 
 /* Not enough room beside the board: show the panel below it instead */
 @media screen and (max-width: 960px) {

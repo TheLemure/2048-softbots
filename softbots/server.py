@@ -7,11 +7,14 @@ Run from the repo root:
 
 then open http://localhost:8000 in your browser.
 
-It does two things:
+It does three things:
   1. Serves the 2048 game files (index.html, js/, style/, ...).
   2. Answers POST /move: the browser sends
      {"bot": "<id>", "board": [[...]], "score": <current game score>}
      and gets back {"move": 0-3 or null} from the matching function in bots.py.
+  3. Answers POST /stats/game: the browser sends {"bot": "<id>"}, the server
+     plays one whole game with that softbot (see play_game in stats.py) and
+     sends back {"score", "moves", "max_tile", "ended", "seconds"}.
 """
 
 import importlib
@@ -23,6 +26,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 import game_rules
 import bots
+import stats
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_PORT = 8000
@@ -33,7 +37,7 @@ class SoftbotHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=REPO_ROOT, **kwargs)
 
     def do_POST(self):
-        if self.path != "/move":
+        if self.path not in ("/move", "/stats/game"):
             self.send_json(404, {"error": "Unknown endpoint " + self.path})
             return
 
@@ -41,8 +45,9 @@ class SoftbotHandler(SimpleHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", 0))
             request = json.loads(self.rfile.read(length))
             bot_id = request["bot"]
-            board = request["board"]
-            score = request.get("score", 0)
+            if self.path == "/move":
+                board = request["board"]
+                score = request.get("score", 0)
         except (ValueError, KeyError) as error:
             self.send_json(400, {"error": "Bad request: %s" % error})
             return
@@ -52,21 +57,23 @@ class SoftbotHandler(SimpleHTTPRequestHandler):
             importlib.reload(game_rules)
             importlib.reload(bots)
 
-            # Make the real game score available to bots via get_score()
-            game_rules.set_score(score)
-
             bot = bots.BOTS.get(bot_id)
             if bot is None:
                 self.send_json(404, {"error": "No softbot with id '%s' in bots.py" % bot_id})
                 return
 
-            direction = bot(board)
+            if self.path == "/stats/game":
+                reply = stats.play_game(bot)
+            else:
+                # Make the real game score available to bots via get_score()
+                game_rules.set_score(score)
+                reply = {"move": bot(board)}
         except Exception:
             traceback.print_exc()
             self.send_json(500, {"error": "%s crashed:\n%s" % (bot_id, traceback.format_exc())})
             return
 
-        self.send_json(200, {"move": direction})
+        self.send_json(200, reply)
 
     def send_json(self, status, data):
         body = json.dumps(data).encode("utf-8")

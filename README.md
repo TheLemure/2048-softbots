@@ -2,7 +2,7 @@
 ==================================================================================================================
 
 - The purpose of this project is to make multiple different softbots for the game 2048, using the open source code. The list of softbots are: 
-    DFS, Iterative Deepening, BFS, UCS, Greedy, A*, Simmulated Annealing, Hill Climbing, MiniMax, and Expectimax.
+    Random, UCS, Greedy, Simulated Annealing, MiniMax, and Expectimax.
     
 - The end goal is to have a simulated environment of 2048 where each softbot is demonstratable and comparable. Additionally, the user can play the game themselves. 
 

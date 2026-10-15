@@ -16,17 +16,14 @@ var Softbots = {};
 // Button order and labels. Each id must match a key in BOTS in bots.py.
 Softbots.list = [
   { name: "Random",              id: "random" },
-  { name: "BFS",                 id: "bfs" },
-  { name: "DFS",                 id: "dfs" },
-  { name: "Iterative Deepening", id: "iterative_deepening" },
-  { name: "UCS",                 id: "ucs" },
   { name: "Greedy",              id: "greedy" },
-  { name: "A*",                  id: "a_star" },
-  { name: "Hill Climbing",       id: "hill_climbing" },
   { name: "Simulated Annealing", id: "simulated_annealing" },
   { name: "MiniMax",             id: "minimax" },
   { name: "ExpectiMax",          id: "expectimax" }
 ];
+
+// Speeds the speed slider can pick, from slowest to fastest (1 = normal)
+Softbots.speeds = [0.25, 0.5, 1, 2, 4, 8, 16];
 
 // Returns the board as a list of rows, board[row][col] (0 = empty),
 // which is the format the Python softbots receive
@@ -60,12 +57,13 @@ Softbots.requestMove = function (botId, board, score) {
 // chosen softbot's moves one at a time so the user can watch.
 // =====================================================================
 
-function SoftbotRunner(game, container, status) {
+function SoftbotRunner(game, container, status, speedControl) {
   this.game      = game;
   this.container = container;
   this.status    = status;
 
-  this.moveDelay        = 150; // ms between moves (tile animation is 100ms)
+  this.moveDelay        = 150; // ms between moves at normal speed (tile animation is 100ms)
+  this.speed            = 1;   // set by the speed slider
   this.maxStalledMoves  = 50;  // stop if the bot keeps picking moves that do nothing
 
   this.timer      = null;
@@ -77,6 +75,7 @@ function SoftbotRunner(game, container, status) {
   this.game.inputManager.on("restart", this.stop.bind(this));
 
   this.createButtons();
+  if (speedControl) this.setupSpeedSlider(speedControl);
 
   if (window.location.protocol === "file:") {
     this.setStatus("Softbots need the Python server: run " +
@@ -131,8 +130,27 @@ SoftbotRunner.prototype.stop = function (message) {
   this.setStatus(typeof message === "string" ? message : "");
 };
 
+// The speed slider changes both how long the tile animations take and how
+// long the softbot waits between moves
+SoftbotRunner.prototype.setupSpeedSlider = function (control) {
+  var self   = this;
+  var slider = control.querySelector("input");
+  var label  = control.querySelector(".softbot-speed-value");
+
+  function update() {
+    self.speed = Softbots.speeds[slider.value];
+    label.textContent = self.speed + "x";
+
+    // softbots.css multiplies every tile animation's time by this
+    document.documentElement.style.setProperty("--animation-scale", 1 / self.speed);
+  }
+
+  slider.addEventListener("input", update);
+  update();
+};
+
 SoftbotRunner.prototype.scheduleNextMove = function () {
-  this.timer = setTimeout(this.step.bind(this), this.moveDelay);
+  this.timer = setTimeout(this.step.bind(this), this.moveDelay / this.speed);
 };
 
 // Ask the active softbot (in Python) for one move and apply it

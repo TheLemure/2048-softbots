@@ -15,7 +15,6 @@ just click the button again; there's no need to restart the server.
 """
 import math
 import random
-from collections import deque
 
 from game_rules import UP, RIGHT, DOWN, LEFT, DIRECTIONS, move,  max_tile, legal_moves, \
     empty_cells, place_tile, is_game_over, get_score, NEW_TILE_PROBABILITIES
@@ -96,49 +95,199 @@ def random_bot(board):
     return random.choice(moves)
 
 
-def bfs(board):
-    # TODO: implement Breadth-First Search softbot
-    return None
-
-
-def dfs(board):
-    # TODO: implement Depth-First Search softbot
-    return None
-
-
-def iterative_deepening(board):
-    # TODO: implement Iterative Deepening softbot
-    return None
-
-
-def ucs(board):
-    # TODO: implement Uniform Cost Search softbot
-    return None
+WIN_VALUE = 1e9
 
 
 def greedy(board):
-    # TODO: implement Greedy (best-first) softbot
-    return None
+    """Choose the legal move with the best immediate board evaluation."""
+    moves = legal_moves(board)
 
+    if not moves:
+        return None
 
-def a_star(board):
-    # TODO: implement A* softbot
-    return None
+    best_move = None
+    best_score = float("-inf")
 
+    for direction in moves:
+        new_board, _, moved = move(board, direction)
 
-def hill_climbing(board):
-    # TODO: implement Hill Climbing softbot
-    return None
+        if not moved:
+            continue
+
+        score = evaluate(new_board)
+
+        if score > best_score:
+            best_score = score
+            best_move = direction
+
+    return best_move
+
 
 
 def simulated_annealing(board):
-    # TODO: implement Simulated Annealing softbot
-    return None
+    """
+    Simulated Annealing softbot (no lookahead).
+
+    delta_e = (score of the best move) - (score of the current board)
+      - delta_e >= 0: play the best move (like hill climbing).
+      - delta_e <  0: with probability e^(delta_e / T) play a random move.
+                      If it doesn't hit, keep playing the best move, UNLESS
+                      that move doesn't improve the score AND uses up another
+                      cell, in which case stop (return None).
+    T starts at 100 and drops by 1 every time the bot is used (minimum 1).
+    """
+    # --- settings (edit these) ---
+    start_temp = 5000
+    min_temp = 1                         # keeps T from reaching 0 (divide by zero)
+    temp_file = "sa_temperature.txt"     # where T is remembered between moves
+
+    if is_game_over(board):
+        return None
+
+    moves = legal_moves(board)
+    if not moves:
+        return None
+
+    # --- load T (the server reloads this file every move, so a normal
+    #     variable would reset to 100 each time) ---
+    try:
+        with open(temp_file) as f:
+            T = float(f.read())
+    except (OSError, ValueError):
+        T = start_temp
+
+    # A board with 2 or fewer tiles means a new game: reset the temperature.
+    tiles_on_board = sum(1 for row in board for cell in row if cell != 0)
+    if tiles_on_board <= 2:
+        T = start_temp
+
+    # --- score of the current board ---
+    current_empty = len(empty_cells(board))
+    current_value = current_empty * 100 + max_tile(board) * 10
+
+    # --- find the best move ---
+    best_move = None
+    best_value = None
+    best_empty = None
+    for direction in moves:
+        moved = move([row[:] for row in board], direction)
+        if isinstance(moved, tuple):     # in case move returns (board, ...)
+            moved = moved[0]
+
+        # -1 because the random tile that spawns after the move uses up a cell
+        empty_after_spawn = len(empty_cells(moved)) - 1
+        value = empty_after_spawn * 100 + max_tile(moved) * 10
+
+        if best_value is None or value > best_value:
+            best_value = value
+            best_move = direction
+            best_empty = empty_after_spawn
+
+    # --- annealing decision ---
+    delta_e = best_value - current_value
+
+    if random.random() < math.exp(delta_e / T):
+        chosen = random.choice(moves)                                 # random move
+    elif delta_e >= 0:
+        chosen = best_move                                # hill climbing                    # it "hit": random move
+    else:
+        # Missed. Keep playing the best move unless it's a bad outcome:
+        # no score improvement AND another cell gets used up.
+        if best_value <= current_value and best_empty < current_empty:
+            chosen = None                                   # stop
+        else:
+            chosen = best_move
+            print("H")
+
+    # --- cool down and save T for the next call ---
+    with open(temp_file, "w") as f:
+        f.write(str(max(T - 1, min_temp)))
+
+    return chosen
+
+
+
+#------------------------------------------------------------------------------#
+
+MINIMAX_DEPTH = 4
+
+
+def minimax_value(board, depth, alpha, beta, maximizing):
+    if max_tile(board) >= 2048:
+        return WIN_VALUE + depth
+
+    if depth == 0 or is_game_over(board):
+        return evaluate(board)
+
+    if maximizing:
+        best = float("-inf")
+
+        for direction in legal_moves(board):
+            new_board, _, moved = move(board, direction)
+
+            if not moved:
+                continue
+
+            value = minimax_value(
+                new_board, depth - 1, alpha, beta, False
+            )
+
+            best = max(best, value)
+            alpha = max(alpha, best)
+
+            if alpha >= beta:
+                break
+
+        return evaluate(board) if best == float("-inf") else best
+
+    # Chance-like opponent: choose the least favorable tile spawn.
+    cells = empty_cells(board)
+
+    if not cells:
+        return evaluate(board)
+
+    worst = float("inf")
+
+    for row, col in cells:
+        for tile, probability in NEW_TILE_PROBABILITIES.items():
+            new_board = place_tile(board, row, col, tile)
+
+            value = minimax_value(
+                new_board, depth - 1, alpha, beta, True
+            )
+
+            worst = min(worst, value)
+            beta = min(beta, worst)
+
+            if alpha >= beta:
+                return worst
+
+    return worst
 
 
 def minimax(board):
-    # TODO: implement MiniMax softbot
-    return None
+    best_move = None
+    best_value = float("-inf")
+
+    for direction in legal_moves(board):
+        new_board, _, moved = move(board, direction)
+
+        if not moved:
+            continue
+
+        value = minimax_value(
+            new_board,
+            MINIMAX_DEPTH - 1,
+            best_value,
+            float("inf"),
+            False
+        )
+
+        if value > best_value:
+            best_value = value
+            best_move = direction
+
+    return best_move
 
 
 def expectimax(board):
@@ -167,7 +316,7 @@ def expectimax(board):
 
         # Get the rows and columns of the empty cells, so we can place a new tile in each one
         cells = empty_cells(current)
-        # If there are no empty cells, the game is over and we return the score of this board
+        # There's always at least one: a legal move never leaves the board full
         average = 0
         for row, col in cells:
             for value, probability in NEW_TILE_PROBABILITIES.items():
@@ -191,13 +340,7 @@ def expectimax(board):
 # The ids must match the ones in js/softbots.js.
 BOTS = {
     "random":              random_bot,
-    "bfs":                 bfs,
-    "dfs":                 dfs,
-    "iterative_deepening": iterative_deepening,
-    "ucs":                 ucs,
     "greedy":              greedy,
-    "a_star":              a_star,
-    "hill_climbing":       hill_climbing,
     "simulated_annealing": simulated_annealing,
     "minimax":             minimax,
     "expectimax":          expectimax,

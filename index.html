@@ -77,8 +77,61 @@
     <div class="softbot-panel">
       <h2>Softbots</h2>
       <div class="softbot-buttons"></div>
+      <label class="softbot-speed">
+        Speed: <span class="softbot-speed-value">1x</span>
+        <input type="range" min="0" max="6" step="1" value="2">
+      </label>
       <p class="softbot-status"></p>
     </div>
+    </div>
+
+    <div class="stats-panel">
+      <h2>Statistics</h2>
+      <div class="stats-controls">
+        <label>Games per softbot: <input class="stats-games" type="number" min="1" value="10"></label>
+        <a class="stats-button">Run statistics</a>
+      </div>
+      <p class="stats-status"></p>
+      <table class="stats-table stats-results">
+        <thead>
+          <tr>
+            <th>Softbot</th>
+            <th>Games</th>
+            <th>Avg score</th>
+            <th>Win %</th>
+            <th>Avg moves</th>
+            <th>Avg time / game</th>
+            <th>Avg time / move</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- The tile columns must match StatsRunner.tiles in js/stats.js -->
+      <table class="stats-table stats-tiles">
+        <thead>
+          <tr>
+            <th rowspan="2">Softbot</th>
+            <th colspan="4">Reached at least</th>
+            <th colspan="3">How the game ended</th>
+          </tr>
+          <tr>
+            <th>128</th>
+            <th>256</th>
+            <th>512</th>
+            <th>1024</th>
+            <th>Won</th>
+            <th>Lost</th>
+            <th>Gave up</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p class="stats-note">
+        Percentages are out of all the games each softbot played. Won means it
+        made a 2048 tile. Gave up means it returned no move (or kept making
+        moves that do nothing) while it still had moves left.
+      </p>
     </div>
 
     <p class="game-explanation">
@@ -104,6 +157,7 @@
   <script src="js/local_storage_manager.js"></script>
   <script src="js/game_manager.js"></script>
   <script src="js/softbots.js"></script>
+  <script src="js/stats.js"></script>
   <script src="js/application.js"></script>
 </body>
 </html>

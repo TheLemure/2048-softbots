@@ -4,5 +4,8 @@ window.requestAnimationFrame(function () {
 
   new SoftbotRunner(game,
                     document.querySelector(".softbot-buttons"),
-                    document.querySelector(".softbot-status"));
+                    document.querySelector(".softbot-status"),
+                    document.querySelector(".softbot-speed"));
+
+  new StatsRunner(document.querySelector(".stats-panel"));
 });
