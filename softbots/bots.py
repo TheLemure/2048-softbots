@@ -21,15 +21,66 @@ from collections import deque
 from game_rules import UP, RIGHT, DOWN, LEFT, DIRECTIONS, max_tile, move, legal_moves, \
     empty_cells, place_tile, is_game_over, NEW_TILE_PROBABILITIES
 
-def evaluate(board):
+def evaluate(board, points=0):
     """
-    Evaluate the board and return a score. This is a simple heuristic that
-    prefers boards with more empty cells and higher tiles.
-    
+    Evaluate the board and return a score (higher is better).
+
+    points is how many points the moves leading to this board earned
+    (add up the second value returned by move() along the search path).
+
+    Tiles are measured by their exponent (2 -> 1, 4 -> 2, 8 -> 3, ...) so
+    big tiles don't drown out everything else. What is rewarded:
+    - Empty cells: more room to move and less chance of getting stuck
+    - Points earned by the moves that led here
+    - The biggest tile
+    - Monotonicity: each row and column sorted in one direction, like
+      64, 32, 16, 8, so tiles line up to merge into each other
+    - Smoothness: neighbouring tiles close in value, so they can merge soon
+    - The biggest tile sitting in a corner
+    Losing gets a huge penalty so the search avoids it at all costs.
     """
-    empty = len(empty_cells(board))
-    max_tile = max(max(row) for row in board)
-    return( empty * 100 + max_tile * 10)
+    EMPTY_WEIGHT = 2.7
+    POINTS_WEIGHT = 1.0
+    MAX_TILE_WEIGHT = 1.0
+    MONOTONICITY_WEIGHT = 1.0
+    SMOOTHNESS_WEIGHT = 0.1
+    CORNER_WEIGHT = 1.0
+    GAME_OVER_SCORE = -1_000_000
+
+    num_empty_cells = len(empty_cells(board))
+    # is_game_over is slow, and the game can't be over with an empty cell
+    if num_empty_cells == 0 and is_game_over(board):
+        return GAME_OVER_SCORE
+
+    exponents = [[int(math.log2(value)) if value else 0 for value in row] for row in board]
+    columns = [list(column) for column in zip(*exponents)]
+
+    monotonicity = 0
+    smoothness = 0
+    for line in exponents + columns:
+        increasing = 0
+        decreasing = 0
+        for a, b in zip(line, line[1:]):
+            if a < b:
+                increasing += b - a
+            else:
+                decreasing += a - b
+            if a and b:
+                smoothness -= abs(a - b)
+        # Only penalise the line for going against its main direction
+        monotonicity -= min(increasing, decreasing)
+
+    biggest = int(math.log2(max_tile(board)))
+    corners = [exponents[0][0], exponents[0][-1], exponents[-1][0], exponents[-1][-1]]
+    corner = biggest if biggest in corners else 0
+
+    return (num_empty_cells * EMPTY_WEIGHT
+            + math.log2(points + 1) * POINTS_WEIGHT
+            + biggest * MAX_TILE_WEIGHT
+            + monotonicity * MONOTONICITY_WEIGHT
+            + smoothness * SMOOTHNESS_WEIGHT
+            + corner * CORNER_WEIGHT)
+
 
 def random_bot(board):
     """
@@ -164,16 +215,6 @@ def ucs(board):
         return deepest_move
     moves = legal_moves(board)
     return moves[0] if moves else None
-
-
-def a_star(board):
-    # TODO: implement A* softbot
-    return None
-
-
-def hill_climbing(board):
-    # TODO: implement Hill Climbing softbot
-    return None
 
 
 def simulated_annealing(board):
