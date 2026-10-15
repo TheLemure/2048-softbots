@@ -16,8 +16,6 @@ var Softbots = {};
 // Button order and labels. Each id must match a key in BOTS in bots.py.
 Softbots.list = [
   { name: "Random",              id: "random" },
-  { name: "BFS",                 id: "bfs" },
-  { name: "UCS",                 id: "ucs" },
   { name: "Greedy",              id: "greedy" },
   { name: "A*",                  id: "a_star" },
   { name: "Hill Climbing",       id: "hill_climbing" },
@@ -193,4 +191,144 @@ SoftbotRunner.prototype.applyMove = function (bot, direction) {
 
 SoftbotRunner.prototype.setStatus = function (text) {
   if (this.status) this.status.textContent = text;
+};
+
+// =====================================================================
+// Softbot stats table
+//
+// One row per entry in Softbots.list, so adding a softbot there (and in
+// BOTS in bots.py) automatically adds its row here. Python plays the
+// games headlessly (softbots/stats.py); this just starts the runs and
+// shows the results as they come in.
+//
+// To add another column, add one entry to SoftbotStats.columns.
+// =====================================================================
+
+function formatNumber(value, digits) {
+  return value.toLocaleString(undefined, { minimumFractionDigits: digits,
+                                           maximumFractionDigits: digits });
+}
+
+SoftbotStats.columns = [
+  { title: "Avg Score", value: function (s) { return formatNumber(s.avg_score, 0); } },
+  { title: "Avg Time",  value: function (s) { return formatNumber(s.avg_time, s.avg_time < 10 ? 3 : 1) + " s"; } },
+  { title: "Wins",      value: function (s, games) { return s.wins + " / " + games; } },
+  { title: "Avg Moves", value: function (s) { return formatNumber(s.avg_moves, 1); } }
+];
+
+function SoftbotStats(container) {
+  this.table  = container.querySelector(".stats-table");
+  this.note   = container.querySelector(".stats-note");
+  this.games  = 100;       // replaced by the server's number once it replies
+  this.data   = {};        // bot id -> latest stats from the server
+  this.cells  = {};        // bot id -> { cells: [td, ...], action: td }
+  this.timer  = null;
+
+  var self = this;
+  container.querySelector(".stats-run-all").addEventListener("click", function (event) {
+    event.preventDefault();
+    self.run(Softbots.list.map(function (bot) { return bot.id; }));
+  });
+  container.querySelector(".stats-stop").addEventListener("click", function (event) {
+    event.preventDefault();
+    self.post("/stats/cancel", {});
+  });
+
+  this.buildTable();
+  this.refresh();          // shows results saved from earlier runs
+}
+
+SoftbotStats.prototype.buildTable = function () {
+  var self = this;
+  var head = this.table.createTHead().insertRow();
+
+  ["Algorithm"].concat(SoftbotStats.columns.map(function (c) { return c.title; }), [""])
+    .forEach(function (title) {
+      var th = document.createElement("th");
+      th.textContent = title;
+      head.appendChild(th);
+    });
+
+  var body = this.table.createTBody();
+
+  Softbots.list.forEach(function (bot) {
+    var row = body.insertRow();
+    row.insertCell().textContent = bot.name;
+
+    var cells = SoftbotStats.columns.map(function () { return row.insertCell(); });
+    var action = row.insertCell();
+    action.className = "stats-action";
+
+    self.cells[bot.id] = { cells: cells, action: action };
+  });
+};
+
+// Send a request and show the reply (every endpoint answers with the latest stats)
+SoftbotStats.prototype.post = function (url, body) {
+  var self = this;
+  return fetch(url, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(body)
+  }).then(function (response) { return response.json(); })
+    .then(function (reply) { self.update(reply); },
+          function () { self.note.textContent = "Can't reach the Python server."; });
+};
+
+SoftbotStats.prototype.run = function (ids) {
+  this.post("/stats/run", { bots: ids });
+};
+
+SoftbotStats.prototype.refresh = function () {
+  var self = this;
+  fetch("/stats").then(function (response) { return response.json(); })
+    .then(function (reply) { self.update(reply); },
+          function () { self.note.textContent = "Can't reach the Python server."; });
+};
+
+SoftbotStats.prototype.update = function (reply) {
+  var self = this;
+  var busy = false;
+
+  this.games = reply.games;
+  this.data  = reply.bots;
+
+  Softbots.list.forEach(function (bot) {
+    var s    = self.data[bot.id];
+    var view = self.cells[bot.id];
+    var hasNumbers = s && s.done > 0;
+
+    SoftbotStats.columns.forEach(function (column, i) {
+      view.cells[i].textContent = hasNumbers ? column.value(s, self.games) : "-";
+    });
+
+    view.action.textContent = "";
+    view.action.title = "";
+
+    if (s && (s.status === "running" || s.status === "queued")) {
+      busy = true;
+      view.action.textContent = s.status === "queued" ? "queued" : s.done + "/" + self.games;
+    } else {
+      var label = "Run";
+      if (s && s.status === "not_implemented") label = "n/a";
+      if (s && s.status === "error")           { label = "error"; view.action.title = s.message; }
+      if (s && s.status === "cancelled")       label = "stopped";
+
+      var link = document.createElement("a");
+      link.className   = "stats-run";
+      link.textContent = label;
+      link.addEventListener("click", function (event) {
+        event.preventDefault();
+        self.run([bot.id]);
+      });
+      view.action.appendChild(link);
+    }
+  });
+
+  this.note.textContent = "Each softbot plays " + this.games + " games without the animation. " +
+                          "Time is how long the softbot spent thinking per game.";
+
+  // Keep polling while anything is queued or running
+  clearTimeout(this.timer);
+  if (busy) this.timer = setTimeout(this.refresh.bind(this), 1000);
 };
