@@ -59,13 +59,91 @@ def dfs(board):
     return None
 
 
-def iterative_deepening(board):
-    # TODO: implement Iterative Deepening softbot
-    return None
-
-
 def ucs(board):
-    # TODO: implement Uniform Cost Search softbot
+    """
+    Uniform Cost Search softbot.
+
+    Explores every sequence of `lookahead` moves, including every possible
+    tile spawn after each move. The cost of a step is the number of occupied
+    cells after the move and spawn, so paths that keep the board emptier are
+    cheaper. Returns the first move of the cheapest path.
+    """
+    # --- settings (edit these) ---
+    lookahead = 1          # how many moves ahead each search looks
+    max_nodes = 50000      # cap on nodes generated per search
+    loss_penalty = 1000    # added to a path that ends in game over
+
+    if is_game_over(board):
+        return None
+
+    total_cells = len(board) * len(board[0])
+    if isinstance(NEW_TILE_PROBABILITIES, dict):
+        values = list(NEW_TILE_PROBABILITIES.keys())
+    else:
+        values = [2, 4]
+
+    # buckets[cost] = list of nodes with that path cost
+    # node = (depth, board, first_move, dead)
+    buckets = {0: [(0, board, None, False)]}
+    size = 1                # total nodes waiting in all buckets
+    level = 0               # cost bucket we are currently popping from
+    generated = 0
+    deepest_depth = 0       # fallback if the node cap is hit
+    deepest_move = None
+
+    while size > 0:
+        # Move up to the cheapest non-empty bucket.
+        while not buckets.get(level):
+            level += 1
+
+        depth, state, first_move, dead = buckets[level].pop()
+        size -= 1
+
+        # Goal: looked far enough ahead, or the game ended on this path.
+        # The cheapest node comes out first, so this is the cheapest path.
+        if depth > 0 and (depth == lookahead or dead):
+            return first_move
+
+        if depth > deepest_depth:
+            deepest_depth = depth
+            deepest_move = first_move
+
+        if generated >= max_nodes:
+            break
+
+        # Expand: every legal move x every empty cell x every spawn value.
+        for direction in legal_moves(state):
+            moved = move([row[:] for row in state], direction)
+            if isinstance(moved, tuple):     # in case move returns (board, ...)
+                moved = moved[0]
+
+            for (r, c) in empty_cells(moved):
+                for value in values:
+                    child = [row[:] for row in moved]
+                    child[r][c] = value
+
+                    child_dead = is_game_over(child)
+                    step_cost = total_cells - len(empty_cells(child))
+                    if child_dead:
+                        step_cost += loss_penalty
+
+                    child_cost = level + step_cost
+                    if child_cost not in buckets:
+                        buckets[child_cost] = []
+                    buckets[child_cost].append((
+                        depth + 1,
+                        child,
+                        direction if depth == 0 else first_move,
+                        child_dead,
+                    ))
+                    size += 1
+                    generated += 1
+
+    # Node cap hit: use the first move of the deepest path reached.
+    if deepest_move is not None:
+        return deepest_move
+    moves = legal_moves(board)
+    return moves[0] if moves else None
     return None
 
 
@@ -105,7 +183,6 @@ BOTS = {
     "random":              random_bot,
     "bfs":                 bfs,
     "dfs":                 dfs,
-    "iterative_deepening": iterative_deepening,
     "ucs":                 ucs,
     "greedy":              greedy,
     "a_star":              a_star,
