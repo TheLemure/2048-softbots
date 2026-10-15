@@ -98,8 +98,14 @@ def random_bot(board):
 WIN_VALUE = 1e9
 
 
-def greedy(board):
-    """Choose the legal move with the best immediate board evaluation."""
+def hill_climbing(board):
+    """
+    Steepest-ascent hill climbing: try every legal move, score each
+    resulting board with evaluate(), and play the best one.
+
+    Normal hill climbing stops when no move improves on the current board,
+    but in 2048 we always have to move, so we play the best move anyway.
+    """
     moves = legal_moves(board)
 
     if not moves:
@@ -327,7 +333,7 @@ def expectimax(board):
 # The ids must match the ones in js/softbots.js.
 BOTS = {
     "random":              random_bot,
-    "greedy":              greedy,
+    "hill_climbing":       hill_climbing,
     "simulated_annealing": simulated_annealing,
     "minimax":             minimax,
     "expectimax":          expectimax,

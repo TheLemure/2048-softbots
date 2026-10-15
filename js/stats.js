@@ -5,8 +5,7 @@
 // number of games and shows two tables:
 //   - Results: average score, win percentage (games that reached 2048),
 //     average moves per game, and average time per game and per move
-//   - How often each softbot reached each tile, and how its games ended
-//     (won, lost, or gave up)
+//   - How often each softbot reached each tile
 //
 // The games are played in Python without the browser (softbots/stats.py),
 // one request per game, so the tables fill in as the results come back.
@@ -87,8 +86,8 @@ StatsRunner.prototype.newTotals = function () {
     score:   0,
     moves:   0,
     seconds: 0,
-    reached: reached,                          // tile -> games that reached at least it
-    ended:   { won: 0, lost: 0, gave_up: 0 }   // how many games ended each way
+    won:     0,
+    reached: reached   // tile -> games that reached at least it
   };
 };
 
@@ -103,7 +102,7 @@ StatsRunner.prototype.createRows = function () {
   Softbots.list.forEach(function (bot) {
     self.rows[bot.id] = {
       results: self.addRow(self.resultsTbody, bot.name, 6),
-      tiles:   self.addRow(self.tilesTbody, bot.name, StatsRunner.tiles.length + 3)
+      tiles:   self.addRow(self.tilesTbody, bot.name, StatsRunner.tiles.length)
     };
     self.rows[bot.id].results.children[1].textContent = "0 / " + self.games;
   });
@@ -159,7 +158,7 @@ StatsRunner.prototype.playNext = function (runId, botIndex, totals) {
     totals.score   += reply.score;
     totals.moves   += reply.moves;
     totals.seconds += reply.seconds;
-    totals.ended[reply.ended] += 1;
+    if (reply.ended === "won") totals.won += 1;
     StatsRunner.tiles.forEach(function (tile) {
       if (reply.max_tile >= tile) totals.reached[tile] += 1;
     });
@@ -182,7 +181,7 @@ StatsRunner.prototype.showTotals = function (bot, totals) {
 
   results[1].textContent = games + " / " + this.games;
   results[2].textContent = Math.round(totals.score / games);
-  results[3].textContent = this.percent(totals.ended.won, games);
+  results[3].textContent = this.percent(totals.won, games);
   results[4].textContent = Math.round(totals.moves / games);
   results[5].textContent = this.formatTime(totals.seconds / games);
   // A bot that gives up straight away makes no moves at all
@@ -191,10 +190,6 @@ StatsRunner.prototype.showTotals = function (bot, totals) {
   StatsRunner.tiles.forEach(function (tile, i) {
     tiles[1 + i].textContent = self.percent(totals.reached[tile], games);
   });
-  var ended = 1 + StatsRunner.tiles.length;
-  tiles[ended].textContent     = this.percent(totals.ended.won, games);
-  tiles[ended + 1].textContent = this.percent(totals.ended.lost, games);
-  tiles[ended + 2].textContent = this.percent(totals.ended.gave_up, games);
 };
 
 StatsRunner.prototype.showError = function (bot) {
