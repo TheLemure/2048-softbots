@@ -15,6 +15,7 @@ just click the button again; there's no need to restart the server.
 """
 
 import random
+import math
 
 from game_rules import UP, RIGHT, DOWN, LEFT, DIRECTIONS, max_tile, move, legal_moves, \
     empty_cells, place_tile, is_game_over, NEW_TILE_PROBABILITIES
@@ -175,8 +176,85 @@ def hill_climbing(board):
 
 
 def simulated_annealing(board):
-    # TODO: implement Simulated Annealing softbot
-    return None
+    """
+    Simulated Annealing softbot (no lookahead).
+
+    delta_e = (score of the best move) - (score of the current board)
+      - delta_e >= 0: play the best move (like hill climbing).
+      - delta_e <  0: with probability e^(delta_e / T) play a random move.
+                      If it doesn't hit, keep playing the best move, UNLESS
+                      that move doesn't improve the score AND uses up another
+                      cell, in which case stop (return None).
+    T starts at 100 and drops by 1 every time the bot is used (minimum 1).
+    """
+    # --- settings (edit these) ---
+    start_temp = 100000
+    min_temp = 1                         # keeps T from reaching 0 (divide by zero)
+    temp_file = "sa_temperature.txt"     # where T is remembered between moves
+
+    if is_game_over(board):
+        return None
+
+    moves = legal_moves(board)
+    if not moves:
+        return None
+
+    # --- load T (the server reloads this file every move, so a normal
+    #     variable would reset to 100 each time) ---
+    try:
+        with open(temp_file) as f:
+            T = float(f.read())
+    except (OSError, ValueError):
+        T = start_temp
+
+    # A board with 2 or fewer tiles means a new game: reset the temperature.
+    tiles_on_board = sum(1 for row in board for cell in row if cell != 0)
+    if tiles_on_board <= 2:
+        T = start_temp
+
+    # --- score of the current board ---
+    current_empty = len(empty_cells(board))
+    current_value = current_empty * 100 + max_tile(board) * 10
+
+    # --- find the best move ---
+    best_move = None
+    best_value = None
+    best_empty = None
+    for direction in moves:
+        moved = move([row[:] for row in board], direction)
+        if isinstance(moved, tuple):     # in case move returns (board, ...)
+            moved = moved[0]
+
+        # -1 because the random tile that spawns after the move uses up a cell
+        empty_after_spawn = len(empty_cells(moved)) - 1
+        value = empty_after_spawn * 100 + max_tile(moved) * 10
+
+        if best_value is None or value > best_value:
+            best_value = value
+            best_move = direction
+            best_empty = empty_after_spawn
+
+    # --- annealing decision ---
+    delta_e = best_value - current_value
+
+    if delta_e >= 0:
+        chosen = best_move                                  # hill climbing
+    elif random.random() < math.exp(delta_e / T):
+        chosen = random.choice(moves)                       # it "hit": random move
+    else:
+        # Missed. Keep playing the best move unless it's a bad outcome:
+        # no score improvement AND another cell gets used up.
+        if best_value <= current_value and best_empty < current_empty:
+            chosen = None                                   # stop
+        else:
+            chosen = best_move
+
+    # --- cool down and save T for the next call ---
+    with open(temp_file, "w") as f:
+        f.write(str(max(T - 1, min_temp)))
+
+    return chosen
+
 
 #------------------------------------------------------------------------------#
 
