@@ -271,9 +271,8 @@ def expectimax(board):
 # The ids must match the ones in js/softbots.js.
 BOTS = {
     "random":              random_bot,
+    "ucs":                 ucs,
     "greedy":              greedy,
-    "a_star":              a_star,
-    "hill_climbing":       hill_climbing,
     "simulated_annealing": simulated_annealing,
     "minimax":             minimax,
     "expectimax":          expectimax,
