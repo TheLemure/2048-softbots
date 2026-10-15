@@ -128,17 +128,18 @@ def simulated_annealing(board):
     """
     Simulated Annealing softbot (no lookahead).
 
-    delta_e = (score of the best move) - (score of the current board)
-      - delta_e >= 0: play the best move (like hill climbing).
-      - delta_e <  0: with probability e^(delta_e / T) play a random move.
-                      If it doesn't hit, keep playing the best move, UNLESS
-                      that move doesn't improve the score AND uses up another
-                      cell, in which case stop (return None).
-    T starts at 100 and drops by 1 every time the bot is used (minimum 1).
+    delta_e = evaluate(board after the best move) - evaluate(current board)
+      - delta_e >= 0: play the best move (uphill, like hill climbing).
+      - delta_e <  0: with probability e^(delta_e / T) play a random move
+                      (a "downhill" step that can escape a bad position),
+                      otherwise play the best move anyway.
+    T starts at 5 and is multiplied by 0.99 every move, so early on the bot
+    explores a lot and by the late game it plays like hill climbing.
     """
     # --- settings (edit these) ---
-    start_temp = 5000
-    min_temp = 1                         # keeps T from reaching 0 (divide by zero)
+    start_temp = 5
+    cooling = 0.99                       # T is multiplied by this every move
+    min_temp = 0.01                      # keeps T from reaching 0 (divide by zero)
     temp_file = "sa_temperature.txt"     # where T is remembered between moves
 
     if is_game_over(board):
@@ -149,7 +150,7 @@ def simulated_annealing(board):
         return None
 
     # --- load T (the server reloads this file every move, so a normal
-    #     variable would reset to 100 each time) ---
+    #     variable would reset to start_temp each time) ---
     try:
         with open(temp_file) as f:
             T = float(f.read())
@@ -162,46 +163,32 @@ def simulated_annealing(board):
         T = start_temp
 
     # --- score of the current board ---
-    current_empty = len(empty_cells(board))
-    current_value = current_empty * 100 + max_tile(board) * 10
+    current_value = evaluate(board)
 
     # --- find the best move ---
     best_move = None
     best_value = None
-    best_empty = None
     for direction in moves:
-        moved = move([row[:] for row in board], direction)
-        if isinstance(moved, tuple):     # in case move returns (board, ...)
-            moved = moved[0]
-
-        # -1 because the random tile that spawns after the move uses up a cell
-        empty_after_spawn = len(empty_cells(moved)) - 1
-        value = empty_after_spawn * 100 + max_tile(moved) * 10
+        new_board, points, _ = move(board, direction)
+        value = evaluate(new_board, points)
 
         if best_value is None or value > best_value:
             best_value = value
             best_move = direction
-            best_empty = empty_after_spawn
 
     # --- annealing decision ---
     delta_e = best_value - current_value
 
-    if random.random() < math.exp(delta_e / T):
-        chosen = random.choice(moves)                                 # random move
-    elif delta_e >= 0:
-        chosen = best_move                                # hill climbing                    # it "hit": random move
+    if delta_e >= 0:
+        chosen = best_move                   # uphill: hill climbing
+    elif random.random() < math.exp(delta_e / T):
+        chosen = random.choice(moves)        # downhill: accept a random move
     else:
-        # Missed. Keep playing the best move unless it's a bad outcome:
-        # no score improvement AND another cell gets used up.
-        if best_value <= current_value and best_empty < current_empty:
-            chosen = None                                   # stop
-        else:
-            chosen = best_move
-            print("H")
+        chosen = best_move                   # rejected: play the best move anyway
 
     # --- cool down and save T for the next call ---
     with open(temp_file, "w") as f:
-        f.write(str(max(T - 1, min_temp)))
+        f.write(str(max(T * cooling, min_temp)))
 
     return chosen
 
