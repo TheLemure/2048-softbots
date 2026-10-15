@@ -49,3 +49,77 @@
     display: inline-block;
     padding: 0 12px;
     margin-right: 4px; } }
+
+/* Stats table: sits below the game board */
+.softbot-stats {
+  margin-top: 30px; }
+
+.stats-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px; }
+
+.stats-header h2 {
+  margin: 0 auto 0 0;
+  font-size: 18px; }
+
+.stats-button {
+  background: #8f7a66;
+  border-radius: 3px;
+  color: #f9f6f2;
+  font-weight: bold;
+  font-size: 13px;
+  padding: 0 12px;
+  height: 28px;
+  line-height: 28px;
+  margin-left: 6px;
+  text-decoration: none;
+  cursor: pointer; }
+
+.stats-button:hover {
+  background: #9f8b77; }
+
+.stats-scroll {
+  overflow-x: auto; }
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px; }
+
+.stats-table th {
+  background: #8f7a66;
+  color: #f9f6f2;
+  padding: 6px 4px;
+  text-align: right;
+  white-space: nowrap; }
+
+.stats-table td {
+  padding: 6px 4px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid #d6cdc4; }
+
+.stats-table th:first-child,
+.stats-table td:first-child {
+  text-align: left;
+  padding-left: 8px; }
+
+.stats-table tbody tr:nth-child(even) {
+  background: #eee4da; }
+
+.stats-action {
+  min-width: 50px;
+  padding-right: 8px;
+  color: #776e65; }
+
+.stats-run {
+  color: #f67c5f;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none; }
+
+.stats-note {
+  font-size: 12px;
+  color: #776e65;
+  margin: 8px 0 0; }
