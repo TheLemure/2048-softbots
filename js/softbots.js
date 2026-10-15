@@ -16,6 +16,8 @@ var Softbots = {};
 // Button order and labels. Each id must match a key in BOTS in bots.py.
 Softbots.list = [
   { name: "Random",              id: "random" },
+  { name: "BFS",                 id: "bfs" },
+  { name: "UCS",                 id: "ucs" },
   { name: "Greedy",              id: "greedy" },
   { name: "A*",                  id: "a_star" },
   { name: "Hill Climbing",       id: "hill_climbing" },
