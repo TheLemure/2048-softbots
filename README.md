@@ -1,5 +1,6 @@
 ### 2048 Softbots
-==================================================================================================================
+============================================================================================
+
 
 - The purpose of this project is to make multiple different softbots for the game 2048, using the open source code. The list of softbots are: 
     DFS, Iterative Deepening, BFS, UCS, Greedy, A*, Simmulated Annealing, Hill Climbing, MiniMax, and Expectimax.
@@ -10,6 +11,6 @@
 
 - Open Souce code: [gabrielecirulli's code](https://github.com/gabrielecirulli/2048.git)
 
-- To run the process, simply run the index.html file and choose your desired browser.
+- To run the process, run the server file first and open local host on your desired browser.
+=========================================================================================
 
-==================================================================================================================
