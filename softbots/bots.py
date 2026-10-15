@@ -162,7 +162,6 @@ def ucs(board):
         return deepest_move
     moves = legal_moves(board)
     return moves[0] if moves else None
-    return None
 
 
 def a_star(board):
